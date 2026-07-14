@@ -1,0 +1,15 @@
+# Secrets — never commit keys
+.env
+.env.*
+!.env.example
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
