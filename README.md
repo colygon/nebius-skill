@@ -4,6 +4,15 @@ A dual-compatible skill for **Claude Code** and **OpenClaw** that enables AI age
 
 Invoke with `/nebius` in Claude Code, or let it auto-trigger when you mention Nebius services.
 
+## Skills in this repo
+
+| Skill | Where | What it covers |
+|---|---|---|
+| **`/nebius`** — AI Cloud infrastructure | repo root (`SKILL.md`) | VMs, Kubernetes, storage, IAM, endpoints — everything below |
+| **`/tokenfactory`** — LLM inference | [`tokenfactory/`](tokenfactory/) | API keys & signup help, OpenAI-compatible endpoint, model choice, tool calling, MCP integration, Claude Code / Codex / OpenCode wiring, cookbooks |
+
+Deploying infrastructure? Use `/nebius`. Calling models? Use `/tokenfactory`. Install one or both (see Installation).
+
 ## Supported Services
 
 | Service | What You Can Do |
@@ -37,12 +46,20 @@ Or for project-level use:
 git clone https://github.com/colygon/nebius-skill.git .claude/skills/nebius
 ```
 
+To also enable the **tokenfactory** skill (LLM inference), link its subdirectory in as its
+own skill:
+
+```bash
+ln -s ~/.claude/skills/nebius/tokenfactory ~/.claude/skills/tokenfactory
+```
+
 ### OpenClaw
 
 Clone into your workspace skills:
 
 ```bash
 git clone https://github.com/colygon/nebius-skill.git ~/.openclaw/workspace/skills/nebius
+ln -s ~/.openclaw/workspace/skills/nebius/tokenfactory ~/.openclaw/workspace/skills/tokenfactory
 ```
 
 ## Prerequisites
