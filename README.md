@@ -37,13 +37,13 @@ Deploying infrastructure? Use `/nebius`. Calling models? Use `/tokenfactory`. In
 Clone into your personal skills directory:
 
 ```bash
-git clone https://github.com/colygon/nebius-skill.git ~/.claude/skills/nebius
+git clone https://github.com/opencolin/nebius-skill.git ~/.claude/skills/nebius
 ```
 
 Or for project-level use:
 
 ```bash
-git clone https://github.com/colygon/nebius-skill.git .claude/skills/nebius
+git clone https://github.com/opencolin/nebius-skill.git .claude/skills/nebius
 ```
 
 To also enable the **tokenfactory** skill (LLM inference), link its subdirectory in as its
@@ -58,7 +58,7 @@ ln -s ~/.claude/skills/nebius/tokenfactory ~/.claude/skills/tokenfactory
 Clone into your workspace skills:
 
 ```bash
-git clone https://github.com/colygon/nebius-skill.git ~/.openclaw/workspace/skills/nebius
+git clone https://github.com/opencolin/nebius-skill.git ~/.openclaw/workspace/skills/nebius
 ln -s ~/.openclaw/workspace/skills/nebius/tokenfactory ~/.openclaw/workspace/skills/tokenfactory
 ```
 
@@ -225,7 +225,7 @@ For more details, see the troubleshooting table in [SKILL.md](SKILL.md) and [ref
 
 ## Related Projects
 
-- [openclaw-deploy](https://github.com/colygon/openclaw-deploy) - Deployment toolkit for running OpenClaw/NemoClaw on Nebius
+- [openclaw-deploy](https://github.com/opencolin/openclaw-deploy) - Deployment toolkit for running OpenClaw/NemoClaw on Nebius
 - [Nebius CLI docs](https://docs.nebius.com/cli/) - Official CLI documentation
 - [Nebius API](https://github.com/nebius/api) - gRPC API proto definitions and SDKs
 

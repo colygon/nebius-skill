@@ -37,7 +37,7 @@ echo "Save this password: $PASSWORD"
 # 5. Deploy
 nebius ai endpoint create \
   --name openclaw-agent \
-  --image ghcr.io/colygon/openclaw-serverless:latest \
+  --image ghcr.io/opencolin/openclaw-serverless:latest \
   --platform $PLATFORM \
   --preset 2vcpu-8gb \
   --container-port 8080 \
@@ -120,7 +120,7 @@ openclaw models list --provider nebius
 openclaw config set agents.defaults.model.primary "nebius/deepseek-ai/DeepSeek-V3.2"
 ```
 
-Always use the `nebius/` prefix for model names (e.g., `nebius/zai-org/GLM-5`). See the [plugin repo](https://github.com/colygon/openclaw-nebius-plugin) for the full model catalog and pricing.
+Always use the `nebius/` prefix for model names (e.g., `nebius/zai-org/GLM-5`). See the [plugin repo](https://github.com/opencolin/openclaw-nebius-plugin) for the full model catalog and pricing.
 
 ## Deploy NemoClaw (NVIDIA Plugin)
 
@@ -130,7 +130,7 @@ NemoClaw wraps OpenClaw with NVIDIA's enhanced agent capabilities. Ideal for GPU
 # Same command, different image:
 nebius ai endpoint create \
   --name nemoclaw-agent \
-  --image ghcr.io/colygon/nemoclaw-serverless:latest \
+  --image ghcr.io/opencolin/nemoclaw-serverless:latest \
   --platform cpu-e2 \
   --preset 2vcpu-8gb \
   --container-port 8080 \
