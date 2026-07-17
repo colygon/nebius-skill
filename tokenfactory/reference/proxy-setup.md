@@ -4,10 +4,14 @@ Claude Code and the Codex CLI don't speak OpenAI's wire format, so they can't hi
 Factory directly. **claude-codex-nebius-proxy** is a local bridge that translates both —
 Claude's `/v1/messages` and Codex's `/v1/responses` — into OpenAI-compatible calls to Nebius.
 
-Repo: https://github.com/opencolin/claude-codex-nebius-proxy
+Repo: https://github.com/KiranChilledOut/claude-codex-nebius-proxy
+(mirror: https://github.com/opencolin/claude-codex-nebius-proxy)
 
-If you're helping a user set this up, walk them through Prerequisites → Install (TUI path
-first) → the section for whichever CLI they use.
+Two ways to get it installed:
+
+- **User at the keyboard** → the TUI installer below (it's interactive and handles everything).
+- **Agent doing the setup for the user** → the "Agent-driven install" section: a fully
+  non-interactive path you can run end to end with shell commands.
 
 ## Prerequisites
 
@@ -25,7 +29,7 @@ first) → the section for whichever CLI they use.
 ## Install — the easy way (TUI installer)
 
 ```bash
-git clone https://github.com/opencolin/claude-codex-nebius-proxy.git
+git clone https://github.com/KiranChilledOut/claude-codex-nebius-proxy.git
 cd claude-codex-nebius-proxy
 ./install.sh
 ```
@@ -49,13 +53,57 @@ Sanity check: open **http://localhost:8083/dashboard** — the observability das
 ## Install — manual (no TUI)
 
 ```bash
-git clone https://github.com/opencolin/claude-codex-nebius-proxy.git
+git clone https://github.com/KiranChilledOut/claude-codex-nebius-proxy.git
 cd claude-codex-nebius-proxy
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp .env.example .env    # edit: set OPENAI_API_KEY (your Nebius key), BIG_MODEL, etc.
 .venv/bin/python start_proxy.py
 ```
+
+## Agent-driven install (set it up for the user, no TUI)
+
+If you're an agent installing the proxy on the user's machine, don't launch `./install.sh`
+(it's an interactive TUI). Run the manual steps yourself, one at a time, verifying each:
+
+```bash
+# 0. Preconditions — stop and fix these first if either fails:
+python3 -c 'import sys; assert sys.version_info >= (3, 9), sys.version'   # Python 3.9+
+test -n "$NEBIUS_API_KEY" || echo "NEBIUS_API_KEY not set — do SKILL.md §1 first"
+
+# 1. Clone + install into a venv
+git clone https://github.com/KiranChilledOut/claude-codex-nebius-proxy.git ~/claude-codex-nebius-proxy
+cd ~/claude-codex-nebius-proxy
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
+# 2. Configure .env — inject the key from the environment (never echo/print it)
+cp .env.example .env
+python3 - <<'EOF'
+import os, re
+s = open('.env').read()
+s = re.sub(r'^OPENAI_API_KEY=.*$', f'OPENAI_API_KEY="{os.environ["NEBIUS_API_KEY"]}"', s, flags=re.M)
+open('.env', 'w').write(s)
+EOF
+
+# 3. (Recommended) verify the .env model IDs still exist — Nebius rotates availability:
+curl -s "https://api.tokenfactory.nebius.com/v1/models" -H "Authorization: Bearer $NEBIUS_API_KEY" \
+  | grep -o "$(grep -E '^(BIG|MIDDLE|SMALL|VISION)_MODEL=' .env | cut -d= -f2 | tr -d '"' | sort -u | paste -sd'|' -)" \
+  || echo "WARNING: a model in .env is not in /models — pick replacements from the list and edit .env"
+
+# 4. Start it (background) and verify
+nohup .venv/bin/python start_proxy.py > proxy.log 2>&1 &
+sleep 3
+curl -s -o /dev/null -w "proxy dashboard: HTTP %{http_code}\n" http://localhost:8083/dashboard
+```
+
+HTTP 200 from the dashboard = the proxy is up. Then wire the user's CLI (sections below).
+If it isn't, read `proxy.log` — the usual culprits are a bad key (401s in the log) or a
+stale model ID in `.env` (step 3).
+
+Useful `.env` knobs (see the file's comments): `BIG/MIDDLE/SMALL/VISION_MODEL` control
+routing, `PORT=8083`, `LOG_LEVEL`. There's also a `docker-compose.yml` if the user prefers
+containers over a venv.
 
 **Key safety:** the key goes in `.env` (gitignored in the proxy repo) or the environment —
 same rule as everywhere else: never commit it, never inline it in scripts.

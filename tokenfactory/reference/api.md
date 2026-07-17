@@ -139,7 +139,7 @@ Token Factory is not Anthropic-shaped, so the Claude Code and Codex CLIs need a 
 that translates `/v1/messages` (Claude) and `/v1/responses` (Codex) to OpenAI calls:
 
 - **claude-codex-nebius-proxy** (batteries-included, Nebius-tuned):
-  https://github.com/opencolin/claude-codex-nebius-proxy
+  https://github.com/KiranChilledOut/claude-codex-nebius-proxy
 - Lighter alternatives: `claude-code-router`, or the LiteLLM proxy's Anthropic surface.
 
 **Full install walkthrough (TUI installer, manual setup, both CLIs): `proxy-setup.md`.**

@@ -180,7 +180,7 @@ For specific errors (401, model-not-found, rate limits, tool-call JSON, context 
 | `reference/function-calling.md` | Tool-calling loop, schema format, dispatching to your tools |
 | `reference/batch-and-embeddings.md` | Batch API (evals) and embeddings (RAG over schema docs) |
 | `reference/mcp-integration.md` | Driving MCP-server tools from a Token Factory model, end to end |
-| `reference/proxy-setup.md` | Install claude-codex-nebius-proxy: TUI installer, Claude Code + Codex wiring |
+| `reference/proxy-setup.md` | Install claude-codex-nebius-proxy: TUI installer, agent-driven non-interactive install, Claude Code + Codex wiring |
 | `reference/cookbooks.md` | Discover examples: cookbook task-to-recipe map, browsable mirror, awesome-nebius |
 | `reference/troubleshooting.md` | Common errors and fixes |
 | `examples/` | Runnable Python: quickstart, LiteLLM, function calling, LangGraph+MCP |
@@ -190,5 +190,5 @@ For specific errors (401, model-not-found, rate limits, tool-call JSON, context 
 - **Token Factory Cookbook** — 50 recipes / 27 notebooks: https://github.com/nebius/token-factory-cookbook
 - **Browsable cookbook mirror** (rendered notebooks + search): https://opencolin.github.io/nebius-ecosystem-cookbook/cookbook/
 - **awesome-nebius** — curated Nebius resources: https://github.com/opencolin/awesome-nebius
-- **Claude Code / Codex → Nebius proxy** — https://github.com/opencolin/claude-codex-nebius-proxy
+- **Claude Code / Codex → Nebius proxy** — https://github.com/KiranChilledOut/claude-codex-nebius-proxy
 - **openclaw-nebius-plugin** — https://github.com/opencolin/openclaw-nebius-plugin

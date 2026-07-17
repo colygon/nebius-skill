@@ -63,7 +63,7 @@ files on demand.
 | **Official cookbook** (~50 recipes) | https://github.com/nebius/token-factory-cookbook |
 | **Browsable cookbook mirror** — notebooks rendered with outputs, filter/search | https://opencolin.github.io/nebius-ecosystem-cookbook/cookbook/ |
 | **awesome-nebius** — curated resource list | https://github.com/opencolin/awesome-nebius |
-| **Claude Code / Codex → Nebius proxy** | https://github.com/opencolin/claude-codex-nebius-proxy |
+| **Claude Code / Codex → Nebius proxy** | https://github.com/KiranChilledOut/claude-codex-nebius-proxy |
 | **OpenCode provider docs** (Nebius is built in — no proxy) | https://opencode.ai/docs/providers/ |
 | **Live support** | your event's community Slack `#help` |
 
