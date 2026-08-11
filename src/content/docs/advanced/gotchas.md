@@ -1,225 +1,197 @@
 ---
 title: Common Gotchas
-description: Subtle issues and gotchas to watch out for
+description: Subtle issues that bite when working with the Nebius CLI
 ---
 
-## API & Configuration
+Every item below is a real failure mode with a verified fix. If a command here
+disagrees with something you read elsewhere, trust this page and
+[`SKILL.md`](https://github.com/opencolin/nebius-skill/blob/main/SKILL.md) — they are
+kept in sync.
 
-### Region Endpoints
+## CLI & Configuration
 
-Forgetting to change the endpoint for different regions:
+### The install URL changed
 
-```bash
-# ❌ Wrong - using EU endpoint in US region
-export NEBIUS_API_ENDPOINT="https://api.nebius.com/v1"
-nebius ai endpoint create --region us-central1  # Will fail
-
-# ✅ Correct - matching endpoint to region
-export NEBIUS_API_ENDPOINT="https://api.nebius.us-central1.nebius.com/v1"
-```
-
-### Token Expiration
-
-API tokens expire even after successful authentication:
+The old `storage.ai.nebius.cloud` host no longer resolves.
 
 ```bash
-# ✅ Refresh token before use
-nebius auth refresh
-
-# ✅ Check token expiry
-nebius auth token-info
+# ✅ Current install URL
+curl -sSL https://storage.eu-north1.nebius.cloud/cli/install.sh | bash
+exec -l $SHELL
 ```
 
-## Resource Management
-
-### Instance Type Availability
-
-Not all instance types are available in all regions:
+### `nebius init` does not exist
 
 ```bash
-# ❌ May fail in some regions
-nebius ai endpoint create --platform gpu-h100
+# ❌ Not a command
+nebius init
 
-# ✅ Check availability first
-nebius platform list --region us-central1
+# ✅ Create a profile instead
+nebius profile create
 ```
 
-### Spot Instance Interruptions
+### `nebius profile create` needs a terminal
 
-Spot instances can be interrupted anytime - use replicas for availability:
+It prompts interactively and cannot be scripted. In CI, containers, or any headless
+environment, write `~/.nebius/config.yaml` directly — see [Authentication](/intro/authentication/).
+
+### A macOS binary will not run on Linux
+
+Copying `~/.nebius/bin/` from a Mac to a Linux box gives `Exec format error`. Copy the
+config files only, and reinstall the CLI natively on the target host.
+
+### Profile scoping hides projects
+
+`nebius iam project list` is scoped to the active profile's parent. To see projects in
+other regions, pass the tenant explicitly:
 
 ```bash
-# ❌ Single replica with spot
-nebius ai endpoint create --replicas 1 --spot
-
-# ✅ Multiple replicas with auto-restart
-nebius ai endpoint create --replicas 3 --spot --auto-restart
+nebius iam project list --parent-id <TENANT_ID> --format json
 ```
 
-## Networking & Security
-
-### Firewall Rules Default to Deny
-
-When creating a new VPC, traffic is blocked by default:
+### `nebius iam whoami` nests the user name
 
 ```bash
-# ✅ Explicitly allow needed traffic
-nebius network security-group rule add \
-  --protocol tcp \
-  --port 8080 \
-  --cidr 0.0.0.0/0
+# ✅ The name lives here
+nebius iam whoami --format json | jq -r '.user_profile.attributes.name'
+
+# ❌ This field does not exist
+nebius iam whoami --format json | jq -r '.identity.display_name'
 ```
 
-### Data Transfer Costs
+## Regions & Platforms
 
-Cross-region data transfer is expensive:
+### `cpu-e2` does not exist in `eu-west1`
+
+This is the single most common deploy failure. `eu-west1` (Paris) only offers `cpu-d3`.
 
 ```bash
-# ❌ Expensive
-nebius ai endpoint create --region us-central1
-# ... accessing data from eu-north1
+# ❌ Fails in eu-west1
+nebius ai endpoint create --platform cpu-e2 ...
 
-# ✅ Keep data in same region
-nebius storage bucket create --region us-central1
+# ✅ Check what the region actually has
+nebius compute platform list --format json
 ```
 
-## Kubernetes Issues
+See [Regions & Platforms](/core-concepts/regions/) for the full mapping.
 
-### Scaling During Updates
+### Token Factory has a separate US endpoint
 
-Scaling while updating your deployment can cause issues:
+Using the EU URL from `us-central1` fails as a silent 401 or "model not found" rather
+than an obvious error.
+
+| Region | Token Factory base URL |
+|---|---|
+| `eu-north1`, `eu-west1` | `https://api.tokenfactory.nebius.com/v1` |
+| `us-central1` | `https://api.tokenfactory.us-central1.nebius.com/v1` |
+
+## Compute & Disks
+
+### Disk types use underscores
 
 ```bash
-# ❌ Don't scale and update simultaneously
-nebius kubernetes scale deployment my-app --replicas 5
-nebius kubernetes apply deployment-update.yaml
+# ❌ Rejected
+--type network-ssd
 
-# ✅ Wait for previous operation
-nebius kubernetes wait deployment my-app --condition=Available
-nebius kubernetes apply deployment-update.yaml
+# ✅ Correct
+--type network_ssd    # also: network_hdd, network_ssd_io_m3
 ```
 
-### Node Pool Unavailability
-
-Deleting node pools without draining first:
+### The image family flag says "image-family" twice
 
 ```bash
-# ❌ Will disrupt workloads
-nebius kubernetes node-pool delete node-pool-1
+# ❌ Not a flag
+--source-image-family ubuntu22.04-cuda12
 
-# ✅ Drain before deletion
-nebius kubernetes drain node-pool-1 --ignore-daemonsets
-nebius kubernetes node-pool delete node-pool-1
+# ✅ Correct
+--source-image-family-image-family ubuntu22.04-cuda12
 ```
 
-## Storage Issues
+### CUDA images need at least 50 GiB
 
-### Unattached Volumes Accumulate
+`ubuntu22.04-cuda12` fails validation at 30 GiB. Give the boot disk 50 GiB or more.
 
-Deleting an instance leaves volumes behind:
+### Public IPs come back with a `/32` suffix
 
 ```bash
-# ✅ Clean up unused volumes
-nebius storage volume list
-nebius storage volume delete volume-id
-
-# ✅ Or set auto-delete on creation
-nebius ai endpoint create --auto-delete-volumes
+# ✅ Strip the CIDR suffix
+nebius compute instance get --id <ID> --format json \
+  | jq -r '.status.network_interfaces[0].public_ip_address.address' \
+  | cut -d/ -f1
 ```
 
-### Snapshot Retention
+### The SSH user is `nebius`
 
-Snapshots aren't automatically deleted:
+Not `root`, `ubuntu`, `admin`, or `user`. This is the default on both VMs and endpoints
+unless your own cloud-init creates a different account.
+
+### SSH keys can only be set at creation
+
+`--ssh-key` must be passed to `nebius ai endpoint create`. There is no way to add a key
+afterwards — you have to recreate the endpoint. To recover a public key from a private
+one:
 
 ```bash
-# ✅ Clean up old snapshots
-nebius storage snapshot list --older-than 90d --delete
+ssh-keygen -y -f key > key.pub
 ```
 
-## Model & Inference Issues
+## Endpoints
 
-### Model Card Compatibility
+### Expose every port you need
 
-Models may have specific requirement versions:
+`--container-port` is repeatable. A health check on 8080 and a dashboard on 18789 need
+both flags:
 
 ```bash
-# ✅ Check model requirements
-nebius ai model info llama2-70b
-
-# ✅ Install correct versions
-pip install -r requirements-llama2-70b.txt
+nebius ai endpoint create --container-port 8080 --container-port 18789 ...
 ```
 
-### Token Limits
+### Public IP quota is 3 per tenant
 
-Different models have different token limits:
+`RESOURCE_EXHAUSTED` on a `--public` endpoint usually means you are at the limit, not
+that the region is full. Free one up:
 
 ```bash
-# ❌ May exceed limit
-nebius ai completion \
-  --model gpt-3.5 \
-  --max-tokens 10000  # Only supports 4096
-
-# ✅ Check limits first
-nebius ai model info gpt-3.5 --field max_tokens
+nebius ai endpoint list --format json | jq '.items[] | {name: .metadata.name, state: .status.state}'
+nebius ai endpoint delete <ID>
 ```
 
-## Monitoring & Debugging
+## IAM & Service Accounts
 
-### Logs Not Available Immediately
+### Federation auth opens a browser
 
-It takes a few seconds for logs to appear:
+On a headless VM, `nebius iam get-access-token` tries to launch a browser and hangs. Use
+a service account for anything unattended.
+
+### Service account keys must be 4096-bit RSA
+
+2048-bit keys are rejected:
 
 ```bash
-# ❌ Checking immediately after deploy
-nebius logs get endpoint-name
-
-# ✅ Wait a moment
-sleep 2 && nebius logs get endpoint-name
+openssl genrsa 4096
 ```
 
-### Metrics Aggregation Delay
+### Registry pushes need `editors` membership
 
-Metrics are aggregated every minute (not real-time):
+A service account that can authenticate can still get `denied` from `docker push` until
+it is in the `editors` group:
 
 ```bash
-# ✅ Be aware of 1-minute delay
-nebius metrics get endpoint-name --since 5m
+nebius iam group list --parent-id <TENANT_ID> --format json
+nebius iam group-membership create --parent-id <EDITORS_GROUP_ID> --member-id <SA_ID>
 ```
 
-## Billing & Cost
+### Strip Mac paths when copying a config to Linux
 
-### Pre-paid Vs. Pay-as-you-go
+`private-key-file-path` in a config copied from a Mac will point at a path that does not
+exist on the VM.
 
-Mixing billing models can be confusing:
+## Cost
 
-```bash
-# ✅ Be clear about your billing model
-nebius billing info
-nebius billing estimate --resource-type gpu-a40 --hours 100
-```
-
-### Data Transfer Charges
-
-Easy to forget about egress charges:
-
-```bash
-# ✅ Monitor outbound data
-nebius billing costs --group-by data-transfer
-
-# ✅ Use content delivery networks
-# Cache at edge to reduce transfer
-```
-
-## Best Practices Summary
-
-1. **Always specify region explicitly**
-2. **Test in staging before production**
-3. **Monitor costs from day one**
-4. **Use replicas for high availability**
-5. **Keep resources in same region**
-6. **Delete unused resources regularly**
-7. **Implement proper logging/monitoring**
-8. **Rotate API keys frequently**
-9. **Document your infrastructure**
-10. **Have a disaster recovery plan**
+- CPU (`cpu-e2` / `cpu-d3`) is far cheaper than GPU — use it for agent and orchestration
+  workloads that call a remote inference API.
+- `nebius ai endpoint stop` and `nebius compute instance stop` pause billing. Stopping is
+  not deleting; disks still cost.
+- Size disks to the image. A 250 GiB disk for a 400 MB container is pure waste.
+- Prefer H100 over H200 when the model fits in 80 GB, and L40S for small-model inference.
+- `--preemptible-priority` suits batch and training jobs that tolerate interruption.

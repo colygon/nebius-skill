@@ -15,7 +15,11 @@ compatibility: >
   Supported on macOS and Linux.
 
 # Claude Code fields
-allowed-tools: Bash(nebius *), Bash(kubectl *), Bash(helm *), Bash(docker *), Bash(ssh *), Bash(curl *), Bash(grpcurl *), Bash(python *), Bash(go *), Bash(terraform *), Bash(pip install nebius*), Bash(go get github.com/nebius/*), Read, Grep, Glob
+# Scoped to the CLIs this skill actually drives. General-purpose interpreters
+# (python, go, curl, ssh) are deliberately omitted — pre-approving them is
+# equivalent to pre-approving arbitrary code execution. Claude will still ask
+# for those when a task genuinely needs them.
+allowed-tools: Bash(nebius *), Bash(kubectl *), Bash(helm *), Bash(docker *), Bash(grpcurl *), Bash(terraform *), Bash(pip install nebius*), Bash(go get github.com/nebius/*), Read, Grep, Glob
 argument-hint: "[service] [action] or describe what you want to deploy"
 
 metadata:

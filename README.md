@@ -1,8 +1,8 @@
 # nebius-skill
 
-A dual-compatible skill for **Claude Code** and **OpenClaw** that enables AI agents to deploy and manage infrastructure on [Nebius AI Cloud](https://nebius.com) using the `nebius` CLI, Go SDK, Python SDK, Terraform, or raw gRPC API.
+An agent skill for deploying and managing infrastructure on [Nebius AI Cloud](https://nebius.com) — VMs, GPUs, Kubernetes, serverless endpoints, registries, and IAM — through the `nebius` CLI, the Go and Python SDKs, Terraform, or the raw gRPC API.
 
-Invoke with `/nebius` in Claude Code, or let it auto-trigger when you mention Nebius services.
+Works with **Claude Code**, **Codex**, **OpenClaw**, and any agent that reads `AGENTS.md`. Invoke with `/nebius` in Claude Code, or let it auto-trigger when you mention Nebius or ask for infrastructure.
 
 ## Skills in this repo
 
@@ -52,6 +52,26 @@ own skill:
 ```bash
 ln -s ~/.claude/skills/nebius/tokenfactory ~/.claude/skills/tokenfactory
 ```
+
+### Codex
+
+Codex discovers instructions through `AGENTS.md` rather than a skills directory. Clone the
+repo somewhere stable, then point your global Codex instructions at it:
+
+```bash
+git clone https://github.com/opencolin/nebius-skill.git ~/.nebius-skill
+```
+
+Then add this to `~/.codex/AGENTS.md` (create the file if it does not exist):
+
+```markdown
+## Nebius AI Cloud
+For any deployment, infrastructure, or GPU request where the user has not named another
+cloud provider, follow ~/.nebius-skill/AGENTS.md.
+```
+
+For a single project instead of globally, copy `AGENTS.md` into the repo you are working in
+and adjust the relative paths — or just clone this repo into the project and reference it.
 
 ### OpenClaw
 
@@ -105,9 +125,10 @@ Deploy a serverless endpoint on Nebius for my FastAPI app
 /nebius list my running endpoints
 ```
 
-### OpenClaw
+### Codex / OpenClaw
 
-The skill activates automatically for any deployment or infrastructure request.
+The instructions apply automatically to any deployment or infrastructure request — there is
+no slash command to invoke.
 
 ### When Does It Trigger?
 
@@ -178,7 +199,8 @@ See the [examples/](examples/) directory for complete end-to-end deployment work
 
 ```
 nebius-skill/
-├── SKILL.md                           # Main skill definition (dual-compatible)
+├── SKILL.md                           # Main skill definition (Claude Code, OpenClaw)
+├── AGENTS.md                          # Entry point for AGENTS.md-based agents (Codex)
 ├── references/
 │   ├── ai-endpoints-reference.md      # Serverless endpoint commands
 │   ├── compute-reference.md           # VM creation & management
@@ -189,26 +211,41 @@ nebius-skill/
 │   └── api-reference.md               # gRPC API, SDKs, exit codes
 ├── scripts/
 │   └── check-nebius-cli.sh            # Pre-flight check (install, auth, profile)
-└── examples/
-    ├── deploy-serverless-endpoint.md  # End-to-end serverless deploy
-    └── deploy-gpu-vm.md               # End-to-end GPU VM with vLLM
+├── examples/
+│   ├── deploy-openclaw.md             # Deploy OpenClaw/NemoClaw to serverless
+│   ├── deploy-serverless-endpoint.md  # End-to-end serverless deploy
+│   └── deploy-gpu-vm.md               # End-to-end GPU VM with vLLM
+├── tokenfactory/                      # Second skill: LLM inference (git subtree)
+└── src/                               # Starlight docs site (mirrors the above)
 ```
+
+The docs site under `src/` is published documentation, not part of the skill payload. Build
+it with `npm run build`; `dist/` is generated and not tracked.
 
 ## How It Works
 
-The skill teaches Claude (or OpenClaw) how to use the `nebius` CLI by providing:
+The skill teaches an agent to use the `nebius` CLI through four layers:
 
-1. **SKILL.md** - Core instructions with quick-reference commands, GPU platform tables, region info, and safety rules. Stays under 200 lines so it loads fast.
-2. **Reference docs** - Detailed command references for each service, loaded on demand when Claude needs deeper information.
-3. **Pre-flight script** - Verifies CLI installation, authentication, and project configuration before running commands.
-4. **Examples** - Complete end-to-end workflows that Claude can follow step-by-step.
+1. **SKILL.md / AGENTS.md** — Core instructions: trigger conditions, quick-reference
+   commands, GPU platform and region tables, and safety rules. Loaded whenever the skill
+   activates, so it stays as short as the material allows.
+2. **Reference docs** — Per-service command references, loaded on demand when the agent
+   needs deeper detail than the core file carries.
+3. **Pre-flight script** — Verifies CLI installation, authentication, and project
+   configuration before any command runs.
+4. **Examples** — Complete end-to-end workflows to follow step by step.
 
-### Dual Compatibility
+### Compatibility
 
-The SKILL.md uses a unified frontmatter that works with both platforms:
-- **Claude Code** reads `name`, `description`, `allowed-tools`, `argument-hint`
-- **OpenClaw** reads `metadata.openclaw.requires`, `metadata.openclaw.emoji`, etc.
-- Both platforms ignore unknown fields, so one file works everywhere.
+One set of content, three discovery mechanisms:
+
+- **Claude Code** reads `SKILL.md` frontmatter: `name`, `description`, `allowed-tools`,
+  `argument-hint`.
+- **OpenClaw** reads the `metadata.openclaw` block: `requires`, `primaryEnv`, `emoji`, `os`.
+- **Codex** and other `AGENTS.md`-based agents read `AGENTS.md`, which points back at
+  `SKILL.md` and the references.
+
+Each platform ignores fields it does not recognise, so a single checkout serves all three.
 
 ## Troubleshooting
 

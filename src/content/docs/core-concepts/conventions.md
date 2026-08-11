@@ -55,17 +55,19 @@ Standard ports by service type:
 
 Recommended configurations:
 
-### Small Workloads
-- CPU: cpu-e2 (4-8 vCPU)
-- Memory: 16-32 GB
-- Storage: 100 GB
+### Agent / orchestration workloads
+- Platform: `cpu-e2` (`cpu-d3` in `eu-west1`)
+- Preset: `2vcpu-8gb`
+- Storage: size it to the image — a 400 MB container does not need 250 GiB
 
-### Medium Workloads
-- CPU: cpu-c3 (16-32 vCPU)
-- Memory: 64-128 GB
-- Storage: 500 GB
+### Single-GPU inference
+- Platform: `gpu-l40s-pcie` for small models, `gpu-h100-sxm` for general use
+- Preset: `1gpu-16vcpu-200gb`
+- Storage: 100 GiB, and at least 50 GiB for any `ubuntu22.04-cuda12` boot disk
 
-### Large Workloads
-- GPU: gpu-a40 or gpu-a100
-- Memory: 256+ GB
-- Storage: 2+ TB
+### Large model inference / training
+- Platform: `gpu-h200-sxm`, `gpu-b200-sxm`, or `gpu-b300-sxm`
+- Preset: `4gpu-64vcpu-800gb` or `8gpu-128vcpu-1600gb`
+- Storage: 500 GiB+, plus `--shm-size 16Gi` for PyTorch
+
+See [Regions & Platforms](/core-concepts/regions/) for the full platform list.

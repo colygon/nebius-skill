@@ -2,3 +2,7 @@
 *.log
 .env
 node_modules/
+
+# Astro build output and generated types — regenerate with `npm run build`
+dist/
+.astro/
