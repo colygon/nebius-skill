@@ -1,190 +1,131 @@
 ---
 title: Troubleshooting
-description: Common issues and solutions for Nebius services
+description: Errors you will actually hit, and what fixes them
 ---
 
-## Authentication Issues
+## Exit codes
 
-### "Invalid API key"
+The CLI returns gRPC status codes. The number tells you which class of problem you have:
 
-**Cause**: API key is incorrect, expired, or not set
+| Code | Status | Usual cause | Fix |
+|---|---|---|---|
+| 7 | `UNAUTHENTICATED` | Token expired (they last ~12 h) | `nebius iam login`, or check the service account key |
+| 13 | `NOT_FOUND` | Wrong resource ID, or wrong project/profile | Verify the ID and the active profile's `parent-id` |
+| 15 | `PERMISSION_DENIED` | Identity is not in the `editors` group | Add the user or service account to `editors` |
+| 24 | `RESOURCE_EXHAUSTED` | Quota — often the 3-public-IP tenant limit | Delete unused resources, or request an increase in the console |
+| 25 | `NOT_ENOUGH_RESOURCES` | The region has no capacity for that preset | Try another region or a smaller preset |
 
-**Solution**:
-```bash
-# Verify key is set
-echo $NEBIUS_API_KEY
+## Installation & authentication
 
-# Create a new key in Nebius Console
-# Update environment variable
-export NEBIUS_API_KEY="new-key"
-```
-
-### "UNAUTHENTICATED" Error
-
-**Cause**: Missing or invalid authentication token
-
-**Solution**:
-```bash
-nebius auth login
-# Follow interactive prompts to authenticate
-```
-
-## Deployment Issues
-
-### Endpoint Creation Fails
-
-**Error**: "Image not found in registry"
-
-**Solution**:
-```bash
-# Verify image exists
-nebius registry image list
-
-# Push image first
-docker push your-registry/image:tag
-```
-
-**Error**: "Resource quota exceeded"
-
-**Solution**:
-- Check current usage: `nebius quota show`
-- Request quota increase in Nebius Console
-- Delete unused resources
-
-### Kubernetes Issues
-
-**Pod not starting**
+### `nebius: command not found`
 
 ```bash
-# Check pod status
-nebius kubernetes pod list --cluster my-cluster
-
-# View pod logs
-nebius kubernetes logs pod-name --cluster my-cluster
-
-# Describe pod for events
-nebius kubernetes describe pod-name --cluster my-cluster
+curl -sSL https://storage.eu-north1.nebius.cloud/cli/install.sh | bash
+exec -l $SHELL
+nebius version
 ```
 
-**Persistent volume issues**
+### `nebius init` is not a command
+
+Use `nebius profile create`. See [Authentication](/intro/authentication/).
+
+### `nebius profile create` hangs
+
+It requires an interactive terminal. In CI or a container, write `~/.nebius/config.yaml`
+directly, then run `nebius iam login` once — or skip browser auth entirely with a service
+account. Both paths are in [IAM](/services/iam/).
+
+### `UNAUTHENTICATED` on a headless VM
+
+Federation tokens expire, and `nebius iam get-access-token` then tries to open a browser.
+Switch that host to service account auth: create the account, generate a **4096-bit RSA**
+key, add it to `editors`, and set `auth-type: service account` in `~/.nebius/config.yaml`.
+
+### Everything returns `NOT_FOUND`
+
+Usually the profile is pointing at the wrong parent:
 
 ```bash
-# List volumes
-nebius storage volume list
-
-# Check volume status
-nebius storage volume status volume-name
-
-# Resize if needed
-nebius storage volume resize volume-name --size 1T
+nebius config get parent-id
+nebius iam project list --format json | jq -r '.items[] | {id: .metadata.id, name: .metadata.name}'
 ```
 
-## Networking Issues
+## Deploying
 
-### Cannot Connect to Endpoint
+### The platform is not available in this region
 
-**Solution**:
-```bash
-# Verify endpoint is running
-nebius ai endpoint status my-endpoint
-
-# Check security group rules
-nebius network security-group rules --sg-id sg-xxx
-
-# Test connectivity
-curl -X GET https://my-endpoint-url/health
-```
-
-### DNS Resolution Fails
-
-**Solution**:
-```bash
-# Check DNS configuration
-nslookup my-endpoint.nebius.com
-
-# Test with internal DNS
-nslookup my-endpoint.nebius.internal
-```
-
-## Performance Issues
-
-### High Latency
-
-**Check**:
-- Model size and inference time
-- Network latency to endpoint
-- Instance type capabilities
-- Concurrent request load
-
-**Solution**:
-```bash
-# Scale up instance
-nebius ai endpoint scale --name my-endpoint --replicas 3
-
-# Use GPU if available
-nebius ai endpoint update --platform gpu-a40
-```
-
-### Out of Memory
-
-**Error**: "OOM Killer"
-
-**Solution**:
-```bash
-# Increase instance memory
-nebius ai endpoint update --memory 64G
-
-# Or use larger instance type
-nebius ai endpoint update --platform cpu-m3
-```
-
-## Monitoring & Debugging
-
-### Check Endpoint Logs
+`eu-west1` has `cpu-d3`, not `cpu-e2`. Confirm before deploying:
 
 ```bash
-nebius logs stream endpoint-name
+nebius compute platform list --format json
 ```
 
-### View Metrics
+### Disk validation fails on a CUDA image
+
+`ubuntu22.04-cuda12` needs a boot disk of at least 50 GiB.
+
+### `docker push` is denied
+
+The service account authenticates but lacks write access to the registry:
 
 ```bash
-nebius metrics get endpoint-name --metric cpu_usage
-nebius metrics get endpoint-name --metric memory_usage
+nebius iam group list --parent-id <TENANT_ID> --format json
+nebius iam group-membership create --parent-id <EDITORS_GROUP_ID> --member-id <SA_ID>
 ```
 
-### Debugging Kubernetes
+### The endpoint will not become `RUNNING`
+
+Read the container's own logs before touching the endpoint config:
 
 ```bash
-# Enable debug logging
-nebius kubernetes debug pod-name
-
-# Get detailed events
-nebius kubernetes events --cluster my-cluster
+nebius ai endpoint logs <ENDPOINT_ID> --follow --since 5m --timestamps
 ```
 
-## Cost Issues
+### Public IP quota exceeded
 
-### Unexpected High Bills
+The default tenant limit is 3. List what holds them and release one:
 
-**Check**:
-1. Unused resources running (stop/delete them)
-2. Large data transfers out of region
-3. Spot instance interruptions (increased costs)
-4. Storage growth
-
-**Solution**:
 ```bash
-# Review resource costs
-nebius billing costs --group-by resource
-
-# Set budget alerts
-nebius billing alert --threshold $1000
+nebius ai endpoint list --format json | jq '.items[] | {name: .metadata.name, state: .status.state}'
+nebius ai endpoint delete <ID>
 ```
 
-## Getting Help
+## Connectivity
 
-- Check [Nebius Documentation](https://docs.nebius.com)
-- Search [GitHub Issues](https://github.com/nebius)
-- Join [Nebius Community](https://nebius.ai/community)
-- Contact [Support](https://support.nebius.com)
+### The health port answers but the dashboard does not
+
+`--container-port` only exposes the ports you name. Pass it once per port:
+
+```bash
+nebius ai endpoint create --container-port 8080 --container-port 18789 ...
+```
+
+### Cannot reach the endpoint at all
+
+Check the state and the address, remembering the `/32` suffix:
+
+```bash
+nebius ai endpoint get <ENDPOINT_ID> --format json | jq '{state: .status.state, ip: .status.instances[0].public_ip}'
+```
+
+If the state is `RUNNING` and the port is exposed, the remaining suspect is the security
+group — see [Networking](/services/networking/).
+
+## OpenClaw endpoints
+
+These apply to the OpenClaw/NemoClaw images in [Deploy OpenClaw](/examples/openclaw/).
+
+| Symptom | Fix |
+|---|---|
+| "device identity" / secure-context error | Browsers refuse device identity without HTTPS or localhost. Tunnel first: `ssh -f -N -L 28789:<IP>:18789 nebius@<IP>`, then use `http://localhost:28789/...` |
+| "pairing required" | The approve command needs the gateway token in its environment, or it returns "unauthorized". See [Deploy OpenClaw](/examples/openclaw/) for the exact command. |
+| Gateway token mismatch after a restart | The token must be in `gateway.auth.token` in `~/.openclaw/openclaw.json`, not only in the environment — the env var is lost on a manual restart. |
+| `Config invalid - plugins` | `plugins` is not a valid top-level key and crashes the gateway. Recognised keys: `agents`, `models`, `gateway`, `channels`. NemoClaw auto-loads from its global npm install. |
+| 404 from inference | Wrong model ID format, or the wrong regional Token Factory URL. Use `zai-org/GLM-5`, not the HuggingFace-style `THUDM/GLM-4-9B-0414`. |
+| `openclaw config get` returns `__OPENCLAW_REDACTED__` | Secrets are redacted on read. Inspect the raw file: `cat ~/.openclaw/openclaw.json` |
+
+## Getting help
+
+- [Nebius CLI documentation](https://docs.nebius.com/cli/)
+- [CLI configuration reference](https://docs.nebius.com/cli/configure)
+- [Nebius API protos](https://github.com/nebius/api)

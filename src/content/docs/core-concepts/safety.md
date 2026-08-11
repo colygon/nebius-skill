@@ -46,17 +46,17 @@ description: Safety guidelines and best practices for Nebius
 ### During Deployment
 
 ```bash
-# Use dry-run to preview changes
-nebius ai endpoint create \
-  --name test-endpoint \
-  --dry-run
+# Check whether the resource already exists before creating a duplicate
+nebius ai endpoint list --format json \
+  | jq -r '.items[] | select(.metadata.name=="my-endpoint") | .metadata.id'
 
-# Always verify before applying
-nebius apply --confirm-changes
-
-# Monitor initial deployment
-nebius logs follow endpoint-name
+# Create, then watch it come up
+nebius ai endpoint create --name my-endpoint ... --format json
+nebius ai endpoint logs <ENDPOINT_ID> --follow --since 5m --timestamps
 ```
+
+There is no `--dry-run`. The safe pattern is **list before create**: confirm the resource
+does not already exist, and show the user what will be billed before running the create.
 
 ### Cost Control
 
@@ -101,11 +101,9 @@ nebius logs follow endpoint-name
 
 ### Audit Logging
 
-All API calls are logged and can be reviewed:
-
-```bash
-nebius audit logs --resource-type endpoint
-```
+Audit events are exposed through the gRPC API at `audit.api.nebius.cloud:443`
+(`AuditEvent`, `AuditEventExport`) rather than a dedicated CLI verb. See
+[API & SDKs](/advanced/api-sdks/) for how to call it.
 
 ### Regional Requirements
 
@@ -127,10 +125,10 @@ Ensure your region complies with local regulations:
 
 ### Setting Up Alerts
 
+Alerting is configured in the Nebius console rather than through the CLI. For scripted
+checks, poll the resource state and its logs:
+
 ```bash
-nebius monitoring alert create \
-  --name "High error rate" \
-  --metric error_rate \
-  --threshold 0.05 \
-  --duration 5m
+nebius ai endpoint get <ENDPOINT_ID> --format json | jq -r '.status.state'
+nebius ai endpoint logs <ENDPOINT_ID> --since 5m
 ```
