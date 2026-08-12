@@ -268,4 +268,8 @@ For more details, see the troubleshooting table in [SKILL.md](SKILL.md) and [ref
 
 ## License
 
-MIT
+[MIT](LICENSE) — copy it, fork it, adapt it, ship it in something commercial. Keep the
+copyright notice and you are done. This covers the skill files, references, examples, and
+docs in this repo.
+
+Nebius, Token Factory, and other product names belong to Nebius B.V.

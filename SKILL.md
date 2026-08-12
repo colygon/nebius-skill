@@ -8,7 +8,7 @@ description: >
   Always use for mentions of "nebius", "nebius cloud", mk8s, soperator, or token factory.
   Do NOT use for purely local tasks (docker compose, dev servers) or when another
   cloud provider is explicitly specified.
-license: Apache-2.0
+license: MIT
 compatibility: >
   Requires nebius CLI (https://docs.nebius.com/cli/install).
   Optional: docker, kubectl, helm, terraform, jq.
